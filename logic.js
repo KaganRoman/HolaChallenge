@@ -2,28 +2,27 @@
 
   var bl = null;
 
-  var decTree = {}
+  var dt = {}
 
-  exports.init = function(buf) {
-    var data = JSON.parse(buf.toString())
-    buildTree(decTree, data.tree)
-    data.vData = new Buffer(data.vDataBuf, 'base64')
-    bl = new Filter(data)
+  exports.init = function(b) {
+    var d = JSON.parse(b.toString())
+    bt(dt, d.tree)
+    d.vData = new Buffer(d.vDataBuf, 'base64')
+    bl = new Filter(d)
   }
 
   exports.test = function(w) { 
-      var p = predictTree(decTree, calcFeatures(w))
+      var p = pt(dt, cf(w))
       if(p === "0") return false;
-      w = w.substring(0,6)
-      return bl.contains(new Buffer(w))
+      return bl.contains(new Buffer(w.substring(0,6)))
   }
 
-  var buildTree = function(tree, lines) {
-    var t = lines.split("x").join("If (feature ").split("y").join("Else (feature ").split("z").join("Predict: ").split("\n")
-    addToTree(tree, t)
+  var bt = function(tree, lines) {
+    var t = lines.split("x").join("If (feature ").split("y").join("Else (feature ").split("z").join("Predict: ").split("v").join("in").split("w").join("not in").split("\n")
+    at(tree, t)
   }
 
-  var addToTree = function(tree, lines) {
+  var at = function(tree, lines) {
     if(!lines || lines.length == 0) return
     var line = lines.shift().trim()
     if(line.indexOf("If ") === 0 || line.indexOf("Else") === 0)
@@ -41,12 +40,12 @@
       if (s[3] == "in" || s[4] == "in") tree.Values = JSON.parse("[" + values.trim().replace("{","").replace("}","").replace(")","") + "]");
       else tree.Values = [parseFloat(values.trim().replace(")", ""))]
       tree.LeftChild = {}
-      addToTree(tree.LeftChild, lines);
+      at(tree.LeftChild, lines);
 
       if (line.indexOf("If ") === 0)
       {
           tree.RightChild = {}
-          addToTree(tree.RightChild, lines);
+          at(tree.RightChild, lines);
       }
     }
     if (line.indexOf("Predict:") === 0)
@@ -56,20 +55,20 @@
      }    
   }
 
-  var predictTree = function(tree, features) {
+  var pt = function(tree, features) {
       if (tree.Tp === "Prediction") return tree.Pr;
       if (tree.Tp === "If" || tree.Tp === "Else")
       {
           var val = features[tree.Ft];
           var treeVal = tree.Values[0];
-          if (tree.Op === "<" && val <= treeVal) return predictTree(tree.LeftChild, features);
-          if (tree.Op === ">" && val > treeVal) return predictTree(tree.LeftChild, features);
+          if (tree.Op === "<" && val <= treeVal) return pt(tree.LeftChild, features);
+          if (tree.Op === ">" && val > treeVal) return pt(tree.LeftChild, features);
           if (tree.Op === "in" || tree.Op == "not in")
           {
               var has = tree.Values.indexOf(val) != -1;
-              if(has && tree.Op == "in" || !has && tree.Op == "not in") return predictTree(tree.LeftChild, features);
+              if(has && tree.Op == "in" || !has && tree.Op == "not in") return pt(tree.LeftChild, features);
           }
-          if(tree.RightChild != null) return predictTree(tree.RightChild, features);
+          if(tree.RightChild != null) return pt(tree.RightChild, features);
       }
       return "";
   }
@@ -82,8 +81,7 @@
   var maxl = function(s, arr)  { 
       var maxI = 0;
       var currI = 0;
-      var l = s.length-1;
-      for(i = 0; i < l; ++i) {
+      for(i = 0; i < s.length; ++i) {
           if(arr.indexOf(s[i]) != -1) currI = currI + 1 
           else currI = 0
           if(currI > maxI) maxI = currI
@@ -91,7 +89,7 @@
       return maxI
 }
 
-  var calcFeatures = function(s) {
+  var cf = function(s) {
    
     var chArray = s.split("");
     var vCnt = 0;
@@ -137,7 +135,7 @@ function Filter(arg) {
     this.vData = arg.vData;
     this.nHashFuncs = arg.nHashFuncs;
     this.nTweak = arg.nTweak || 0;
-    this.nFlags = arg.nFlags || Filter.BLOOM_UPDATE_NONE;
+    this.nFlags = arg.nFlags;
 }
 
 Filter.prototype.hash = function hash(nHashNum, vDataToHash) {

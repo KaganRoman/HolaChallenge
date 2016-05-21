@@ -2,20 +2,20 @@
 
   var bl = null;
 
-  var decTree = {}
-  var minCode = ""
-  exports.init = function(buf) {
-    var data = JSON.parse(buf.toString())
-    minCode = data.minCode
-    eval(minCode)
-    buildTree(decTree, data.tree)
+  var d = {}
+  var m = ""
+  exports.init = function(b) {
+    var data = JSON.parse(b.toString())
+    m = data.minCode
+    eval(m)
+    bt(d, data.tree)
     data.vData = new Buffer(data.vDataBuf, 'base64')
     bl = new Filter(data)
   }
 
   exports.test = function(w) { 
-    eval(minCode)
-      var p = predictTree(decTree, calcFeatures(w))
+    eval(m)
+      var p = pt(d, cf(w))
       if(p === "0") return false;
       w = w.substring(0,6)
       return bl.contains(new Buffer(w))
