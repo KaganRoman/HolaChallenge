@@ -4,9 +4,9 @@
 
   var decTree = {}
 
-  exports.init = function(data) {
-    var t = data.tree.split("x").join("If (feature ").split("y").join("Else (feature ").split("z").join("Predict: ").split('\n')
-    addToTree(decTree, t)
+  exports.init = function(buf) {
+    var data = JSON.parse(buf.toString())
+    buildTree(decTree, data.tree)
     data.vData = new Buffer(data.vDataBuf, 'base64')
     bl = new Filter(data)
   }
@@ -16,6 +16,11 @@
       if(p === "0") return false;
       w = w.substring(0,6)
       return bl.contains(new Buffer(w))
+  }
+
+  var buildTree = function(tree, lines) {
+    var t = lines.split("x").join("If (feature ").split("y").join("Else (feature ").split("z").join("Predict: ").split("\n")
+    addToTree(tree, t)
   }
 
   var addToTree = function(tree, lines) {
@@ -69,7 +74,22 @@
       return "";
   }
 
-  var vowels = ['a', 'e', 'i', 'o', 'u'];
+  var vowels = "aeiou".split("");
+  var nvw = "bcdfghjklmnpqrstvwxyz".split("");
+
+  var fq = [0.084, 0.018, 0.0397, 0.03, 0.1027, 0.01, 0.022, 0.026, 0.08, 0.0018, 0.009, 0.052, 0.029, 0.068, 0.0674, 0.029, 0.0016, 0.067, 0.097, 0.061, 0.033, 0.0091, 0.007, 0.0027, 0.018, 0.0031, 0.0233, 0.0]
+
+  var maxl = function(s, arr)  { 
+      var maxI = 0;
+      var currI = 0;
+      var l = s.length-1;
+      for(i = 0; i < l; ++i) {
+          if(arr.indexOf(s[i]) != -1) currI = currI + 1 
+          else currI = 0
+          if(currI > maxI) maxI = currI
+      }
+      return maxI
+}
 
   var calcFeatures = function(s) {
    
@@ -81,15 +101,35 @@
     for(i = 0; i < chArray.length; ++i)
       { if(vowels.indexOf(chArray[i]) === -1) sCnt=sCnt+1; }
     var cntRatio = (sCnt > 0) ? vCnt*1.0/sCnt : 1;
-    var arr = [s.length, vCnt, sCnt, cntRatio];
-    for(i = 0; i < 10; ++i) {
-        if(i >= s.length) arr.push(27.0)
+    var arr = [chArray.length, vCnt, sCnt, cntRatio];
+    var tags = [27,27,0.0,-1,-1,-1]
+    var cfq = 0.0;
+    var w = [];
+    var cnt = s.length;
+    if(cnt < 10) cnt = 10
+    for(i = 0; i < cnt; ++i) {
+        var a = s.charCodeAt(i) - 97;
+        if(i >= s.length) a = 27.0
         else {
-          var a = s.charCodeAt(i) - 97;
-          if(a === -58) a = 26.0;
-          arr.push(a)
+          if(a === -58) { 
+            a = 26.0;     
+            if(i > 0 && tags[0] === 27) tags[0] = w[i-1] 
+            tags[2]++
+            if(tags[3] === -1) tags[3] = i
+            if(tags[3] >= 0) tags[4] = s.length-tags[3]-1
+            if(tags[3] != -1) tags[5] = (tags[3]+1.0)/s.length
+          };
         }
+        w.push(a)
+        cfq = cfq + fq[a]
     }
+    if(tags[3] != -1 && tags[3] < s.length-1) tags[1] = w[tags[3]+1]
+    for(i = 0; i < 10; ++i) arr.push(w[i])
+    for(i = 0; i < 6; ++i) arr.push(tags[i])
+    arr.push(maxl(s, vowels));
+    arr.push(maxl(s, nvw));
+    arr.push(cfq/s.length)
+
     return arr;
   }
 
