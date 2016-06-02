@@ -142,9 +142,6 @@ console.log("True Negative: " + (negativeFound*100)/negative.length + "%");
 var s1 = fs.statSync("r.zip")
 var s2 = fs.statSync("logic-call-min.js")
 var s3 = s1["size"] + s2["size"]
-console.log(s1)
-console.log(s2)
-console.log(s3)
 var score = (positiveFound*50)/positive.length + (negativeFound*50)/negative.length
 console.log("Score: " + score + "%, size: " + s3 + ", left: " + (64*1024 - s3))
 
